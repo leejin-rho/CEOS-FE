@@ -31,10 +31,10 @@ const Apply = () => {
 
   const date = {
     startDateDoc: dateData ? new Date(dateData.startDateDoc) : '',
-    endDateDoc: dateData
-      ? new Date(new Date(dateData.endDateDoc).setHours(24))
-      : '',
+    endDateDoc: dateData ? new Date(dateData.endDateDoc) : '',
   } as DateProps;
+
+  console.log(date);
 
   const curDate = new Date();
 
@@ -273,7 +273,7 @@ const Apply = () => {
           제출하기
         </Button>
         <Text webTypo="Label3" paletteColor="Gray3" margin="80px 0 56px 0">
-          © 2015-2023 CEOS ALL RIGHTS RESERVED.
+          © 2015-2024 CEOS ALL RIGHTS RESERVED.
         </Text>
       </Flex>
 
