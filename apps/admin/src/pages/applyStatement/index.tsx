@@ -13,6 +13,10 @@ import {
 } from '@admin/assets/data/dropDownList';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { adminApplyStatementApi } from '@ceos-fe/utils/src/apis/admin/adminApplyStatementApi';
+import {
+  InterviewAvailabilityInterface,
+  adminInterviewAvailabilityApi,
+} from '@ceos-fe/utils/src/apis/admin/adminInterviewAvailabilityApi';
 import ReactModal from 'react-modal';
 import { ApplicationModal } from '../../components/Modals/applicationModal';
 import { CloseBtn } from '@admin/assets/CloseBtn';
@@ -67,6 +71,10 @@ export default function ApplyStatement() {
   const [searchingName, setSearchingName] = useState('');
 
   const { setValue, watch, getValues } = useForm();
+
+  const [interviewAvailabilityData, setInterviewAvailabilityData] = useState<
+    Map<number, InterviewAvailabilityInterface>
+  >(new Map());
 
   //지원자 목록 가져오기
   const {
@@ -199,6 +207,29 @@ export default function ApplyStatement() {
     });
   }
 
+  useEffect(() => {
+    // 면접 참여 여부 확인
+    applicantData?.data?.content.forEach((data: any) => {
+      if (data.documentPass === '합격' && data.id) {
+        adminInterviewAvailabilityApi
+          .GET_INTERVIEW_AVAILABILITY(data.id)
+          .then((response) => {
+            setInterviewAvailabilityData((prev) =>
+              new Map(prev).set(data.id, response),
+            );
+          })
+          .catch((error) => {
+            console.error('면접 가능 여부 가져오기 실패:', error);
+          });
+      }
+
+      // 최종 합격 여부 확인
+      if (data.finalPass === '합격') {
+        //console.log(`지원자 ${data.id}는 최종 합격입니다.`);
+      }
+    });
+  }, [applicantData]);
+
   // 지원자 엑셀 생성 get 요청
   const {
     refetch: createApplicantExcel,
@@ -259,7 +290,7 @@ export default function ApplyStatement() {
               name: data?.name,
               part: data?.part?.slice(0, 3),
               email: data?.email,
-              phone_number: data?.phoneNumber.replaceAll('-', ''),
+              phone_number: data?.phoneNumber?.replaceAll('-', ''),
               doc_pass: data?.documentPass,
               date: data?.date,
               duration: data?.duration,
@@ -369,29 +400,32 @@ export default function ApplyStatement() {
       dataIndex: 'interview_time',
       // width: '250px',
       responsive: ['md'],
-      render: (_text: string, record: any) => (
-        <Flex justify="space-between" webGap={5} mobileGap={5}>
-          {record.doc_pass === '합격' ? (
-            <div style={{ width: '146px' }}>
-              {record.date?.slice(5, 10)} &nbsp; {record.duration}
-            </div>
-          ) : (
-            <>&nbsp;</>
-          )}
-          {record.doc_pass === '합격' && (
-            <Button
-              variant="admin_stroke"
-              onClick={() => {
-                setModalOpen(true);
-                setApplicantId(record.id);
-                setModalSubject('interview');
-              }}
-            >
-              시간 지정
-            </Button>
-          )}
-        </Flex>
-      ),
+      render: (_text: string, record: any) => {
+        const availability = interviewAvailabilityData.get(record.id);
+        return (
+          <Flex justify="space-between" webGap={5} mobileGap={5}>
+            {availability?.interviewAvailability ? (
+              <div style={{ width: '146px' }}>
+                {record.date?.slice(5, 10)} &nbsp; {record.duration}
+              </div>
+            ) : (
+              <div style={{ width: '146px' }}>{availability?.reason}</div>
+            )}
+            {record.doc_pass === '합격' && (
+              <Button
+                variant="admin_stroke"
+                onClick={() => {
+                  setModalOpen(true);
+                  setApplicantId(record.id);
+                  setModalSubject('interview');
+                }}
+              >
+                시간 지정
+              </Button>
+            )}
+          </Flex>
+        );
+      },
     },
     {
       title: '최종합불',
@@ -487,7 +521,7 @@ export default function ApplyStatement() {
           webGap={8}
           mobileGap={8}
           align="flex-end"
-          style={{ width: 'auto' }}
+          style={{ width: 'auto', marginLeft: 5 }}
         >
           <Text webTypo="Body3" paletteColor="Gray4" className="createAt">
             생성일시 :&nbsp;{createAt}
